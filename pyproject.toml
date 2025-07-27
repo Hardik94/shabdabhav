@@ -14,7 +14,8 @@ dependencies = [
     "soundfile",
     "tts",
     "huggingface_hub",
-    "httpx"
+    "httpx",
+    "sentencepiece"
 ]
 
 [tool.poetry.scripts]

@@ -1,33 +1,34 @@
 # Use official slim Python image
 FROM python:3.11-slim
 
-# System dependencies for audio/model support
+# Install system dependencies needed for audio and building packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libsndfile1 \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-# Set work directory
 WORKDIR /app
 
-# Copy only the relevant files first for caching dependencies
-COPY pyproject.toml ./
-COPY tts_server/ ./tts_server/
+# Copy only the pyproject.toml and lock files first to leverage Docker layer caching
+COPY pyproject.toml uv.lock* ./
 
-# Install astral-uv and project dependencies in one step (no cache for minimal layer size)
-RUN pip install --no-cache-dir astral-uv \
- && uv pip install --system .
+# Install uv and sync dependencies based on lock file, installs packages into system Python env
+RUN pip install --no-cache-dir uv \
+    && uv pip install --system .
+    # && uv sync --locked
 
-# Expose port (match your FastAPI server)
+# Copy the rest of the application code
+COPY api/ ./api/
+
+# Expose server port as usual
 EXPOSE 8000
 
-# Ensure Python output is unbuffered
+# Ensure logs are streamed immediately
 ENV PYTHONUNBUFFERED=1
 
-# More efficient pytorch cache (optional)
+# Optional: set pytorch cache dir for repeatability and speed
 ENV TORCH_HOME=/app/.cache/torch
 
-# Launch with astral-uv in production mode (fastest)
+# Launch the app using uv CLI, matching the script in pyproject.toml
 CMD ["uv", "run", "fastapi", "start"]
-
