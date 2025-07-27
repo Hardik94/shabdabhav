@@ -1,0 +1,21 @@
+[project]
+name = "shabdabhav"
+version = "0.1.0"
+description = "FastAPI server for Parler-TTS and XTTS-v2 models with lazy loading"
+authors = [{ name = "Hardik Patel", email = "hardikprl94@gmail.com" }]
+requires-python = ">=3.11"
+
+dependencies = [
+    "fastapi[standard]",
+    "uvicorn[standard]",
+    "torch",
+    "transformers",
+    "parler-tts",
+    "soundfile",
+    "tts",
+    "huggingface_hub",
+    "httpx"
+]
+
+[tool.poetry.scripts]
+start = "uvicorn api.app:app --host 0.0.0.0 --port 8000 --log-level info"
