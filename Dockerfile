@@ -11,7 +11,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 # Copy only the pyproject.toml and lock files first to leverage Docker layer caching
-COPY pyproject.toml uv.lock* ./
+# COPY pyproject.toml uv.lock* ./
+COPY pyproject.toml ./
 
 # Install uv and sync dependencies based on lock file, installs packages into system Python env
 RUN pip install --no-cache-dir uv \
@@ -31,4 +32,6 @@ ENV PYTHONUNBUFFERED=1
 ENV TORCH_HOME=/app/.cache/torch
 
 # Launch the app using uv CLI, matching the script in pyproject.toml
-CMD ["uv", "run", "fastapi", "start"]
+# CMD ["uv", "run", "fastapi", "start"]
+CMD ["uv", "run", "uvicorn", "api.app:app", "--host", "0.0.0.0", "--port", "8000"]
+# uv run uvicorn api.app:app --host 0.0.0.0 --port 8000

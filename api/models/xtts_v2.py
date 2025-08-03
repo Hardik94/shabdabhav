@@ -12,15 +12,18 @@ class XTTSV2ModelWrapper:
         self.model = None
 
     async def load(self):
+        import torch
         # This loads the TTS model
         if self.model is None:
-            self.model = TTS(self.model_name, progress_bar=False, gpu=torch.cuda.is_available())
+            device = "cuda:0" if torch.cuda.is_available() else "cpu"
+            self.model = TTS(self.model_name, progress_bar=False).to(device)
+            # self.model = TTS(self.model_name, progress_bar=False, gpu=torch.cuda.is_available())
 
     async def generate_audio(self, text: str):
         if self.model is None:
             await self.load()
 
-        wav = self.model.tts(text)
+        wav = self.model.tts(text, speaker_wav="./api/data/parler_tts_out.wav")
         # wav is numpy array (float32)
         buffer = BytesIO()
         sf.write(buffer, wav, self.model.synthesizer.output_sample_rate, format="WAV")

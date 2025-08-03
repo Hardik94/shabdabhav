@@ -1,6 +1,5 @@
 import asyncio
 from collections import OrderedDict
-import torch
 import gc
 
 class ModelCacheLRU:
@@ -33,6 +32,7 @@ class ModelCacheLRU:
             return model, tokenizer
 
     async def _evict(self):
+        import torch
         # Remove least-recently used (first) model
         model_key, (model, _) = self.cache.popitem(last=False)
         try:

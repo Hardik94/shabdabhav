@@ -5,17 +5,27 @@ description = "FastAPI server for Parler-TTS and XTTS-v2 models with lazy loadin
 authors = [{ name = "Hardik Patel", email = "hardikprl94@gmail.com" }]
 requires-python = ">=3.11"
 
+# Mandatory/core dependencies (minimal install, FastAPI only)
 dependencies = [
     "fastapi[standard]",
     "uvicorn[standard]",
-    "torch",
-    "transformers",
-    "parler-tts",
-    "soundfile",
-    "tts",
-    "huggingface_hub",
     "httpx",
+    "torch"
+]
+
+# Optional model dependencies (extras per model group)
+[project.optional-dependencies]
+parler-tts = [
+    "parler-tts",
+    "transformers",
+    "soundfile",
     "sentencepiece"
+]
+xtts = [
+    "tts"
+]
+huggingface = [
+    "huggingface_hub"
 ]
 
 [tool.poetry.scripts]
