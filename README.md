@@ -21,3 +21,7 @@ docker build -t tts-astraluv-server .
 docker run -p 8000:8000 --restart always -v ./data:/app/api/data tts-astraluv-server
 ```
 
+## Documents of API
+```
+http://localhost:8000/docs
+```

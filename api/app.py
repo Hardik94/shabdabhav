@@ -74,22 +74,38 @@ class ModelManager:
 
         # Directly create and store an asyncio Task in the CURRENT loop
         self._downloads[model_name] = loop.create_task(_do_download())
+    
+    async def download_dataset(self, model_name, **kwargs):
+        print(kwargs)
+        if model_name in self._downloads and not self._downloads[model_name].done():
+            return  # Already downloading
+
+        # input_patterns = ["language", "location", "name", "tone"] 
+        loop = asyncio.get_event_loop()
+        async def _do_download():
+            self._download_status[model_name] = "downloading"
+            try:
+                from huggingface_hub import snapshot_download
+                snapshot_download(
+                    repo_id="rhasspy/piper-voices",
+                    local_dir=f"{self.base_dir}/{model_name}",
+                    allow_patterns=f"{kwargs['voice']}"
+                    # repo_type="dataset"
+                )
+                self._download_status[model_name] = "downloaded"
+            except Exception as e:
+                self._download_status[model_name] = f"error: {e}"
+
+        # Directly create and store an asyncio Task in the CURRENT loop
+        self._downloads[model_name] = loop.create_task(_do_download())
 
     async def _really_download(self, model_name):
         # e.g., call huggingface_hub.snapshot_download to base_dir/model_name
         pass
 
     def list_models(self):
-        # List models available in self.base_dir
-        def find_parler_tts_model_dirs(base_dir):
-            model_dirs = []
-            for root, dirs, files in os.walk(base_dir):
-                # if "config.json" in files and "pytorch_model.bin" in files:
-                if "config.json" in files:
-                    model_dirs.append(root)
-            return model_dirs
         
-        model_paths = find_parler_tts_model_dirs(self.base_dir)
+        model_paths = self.find_parler_tts_model_dirs(self.base_dir)
         models_status = {}
         for path in model_paths:
             models_key = path.replace(self.base_dir+'/', '')
@@ -99,16 +115,30 @@ class ModelManager:
         
 
     def get_download_status(self, model_name):
-        # Status (pending, downloading, available, error)
-        # pass
         if model_name not in self._download_status:
-            return {"status": f"{model_name} download not start."}
-        elif self._download_status[model_name] == "downloading":
+            model_paths = self.find_parler_tts_model_dirs(self.base_dir)
+            for path in model_paths:
+                models_key = path.replace(self.base_dir+'/', '')
+                if model_name == models_key:
+                    return {"status": f"{model_name} is in your local Directory."}
+            return {"status": f"{model_name} not found !!! If you require, please download"}
+
+        # Status (pending, downloading, available, error)
+        if self._download_status[model_name] == "downloading":
             return {"status": f"{model_name} download in Progress."}
         elif self._download_status[model_name] == "downloaded":
             return {"status": f"{model_name} download in complete."}
+    
+    def find_parler_tts_model_dirs(self, base_dir):
+        # List models available in self.base_dir
+        model_dirs = []
+        for root, dirs, files in os.walk(base_dir):
+            # if "config.json" in files and "pytorch_model.bin" in files:
+            if ("config.json" in files) or ('*.onnx.json' in files):
+                model_dirs.append(root)
+        return model_dirs
 
-
+    
 async def xtts_loader(model_name: str):
     try:
         tts = importlib.import_module("TTS")
@@ -124,64 +154,52 @@ async def xtts_loader(model_name: str):
     return wrapper, None  # no tokenizer for XTTS
 
 
-@app.post("/tts")
-async def tts_endpoint(request: Request):
-    """
-    JSON payload expects:
-    {
-        "text": "...",
-        "model_type": "parler" or "xtts",
-        "model_id": "parler-tts/parler-tts-mini-v1" or "tts_models/en/vctk/vits",
-        "description": "A female speaker with warm tone." (optional, Parler only)
-        "model_dir": "./models_cache/parler-tts-mini-v1" (optional; local path for Parler)
-    }
-    """
-    body = await request.json()
-    text = body.get("text", "").strip()
-    if not text:
-        raise HTTPException(status_code=400, detail="Missing required field: text")
-    model_type = body.get("model_type", "parler")
-    model_id = body.get("model_id")
-    description = body.get("description", "A clear expressive female voice.")
-    model_dir = body.get("model_dir", None)
+# @app.post("/tts")
+# async def tts_endpoint(request: Request):
+#     """
+#     JSON payload expects:
+#     {
+#         "text": "...",
+#         "model_type": "parler" or "xtts",
+#         "model_id": "parler-tts/parler-tts-mini-v1" or "tts_models/en/vctk/vits",
+#         "description": "A female speaker with warm tone." (optional, Parler only)
+#         "model_dir": "./models_cache/parler-tts-mini-v1" (optional; local path for Parler)
+#     }
+#     """
+#     body = await request.json()
+#     text = body.get("text", "").strip()
+#     if not text:
+#         raise HTTPException(status_code=400, detail="Missing required field: text")
+#     model_type = body.get("model_type", "parler")
+#     model_id = body.get("model_id")
+#     description = body.get("description", "A clear expressive female voice.")
+#     model_dir = body.get("model_dir", None)
 
-    model_key = f"{model_type}:{model_id or 'default'}:{model_dir or 'none'}"
+#     model_key = f"{model_type}:{model_id or 'default'}:{model_dir or 'none'}"
 
-    if model_type == "parler":
-        pass
-        # if not model_id:
-        #     model_id = "parler-tts/parler-tts-mini-v1"
+#     if model_type == "parler":
+#         pass
+#     elif model_type == "xtts":
+#         pass
+#     #     if not model_id:
+#     #         model_id = "tts_models/en/vctk/vits"
 
-        # async def loader():
-        #     return await parler_loader(model_id=model_id, model_dir=model_dir)
+#     #     async def loader():
+#     #         return await xtts_loader(model_id)
 
-        # try:
-        #     model_wrapper, _ = await model_cache.get(model_key, loader)
-        #     audio_buffer = await model_wrapper.generate_audio(prompt=text, description=description)
-        # except Exception as e:
-        #     raise HTTPException(status_code=500, detail=f"Error generating Parler-TTS audio: {e}")
+#     #     try:
+#     #         model_wrapper, _ = await model_cache.get(model_key, loader)
+#     #         audio_buffer = await model_wrapper.generate_audio(text=text)
+#     #     except Exception as e:
+#     #         raise HTTPException(status_code=500, detail=f"Error generating XTTS audio: {e}")
 
-    elif model_type == "xtts":
-        pass
-    #     if not model_id:
-    #         model_id = "tts_models/en/vctk/vits"
+#     # else:
+#     #     raise HTTPException(status_code=400, detail=f"Unknown model_type: {model_type}")
 
-    #     async def loader():
-    #         return await xtts_loader(model_id)
+#     # async def streamer():
+#     #     yield audio_buffer.read()
 
-    #     try:
-    #         model_wrapper, _ = await model_cache.get(model_key, loader)
-    #         audio_buffer = await model_wrapper.generate_audio(text=text)
-    #     except Exception as e:
-    #         raise HTTPException(status_code=500, detail=f"Error generating XTTS audio: {e}")
-
-    # else:
-    #     raise HTTPException(status_code=400, detail=f"Unknown model_type: {model_type}")
-
-    # async def streamer():
-    #     yield audio_buffer.read()
-
-    # return StreamingResponse(streamer(), media_type="audio/wav")
+#     # return StreamingResponse(streamer(), media_type="audio/wav")
 
 
 @app.get("/health")
@@ -202,27 +220,34 @@ model_manager = ModelManager(base_dir="./api/data")
 #     resp = await model.generate_speech(text)
 #     return StreamingResponse(BytesIO(resp.audio_data), media_type=resp.content_type)
 
-@app.post("/models/download")
-async def download_model(name: str, background_tasks: BackgroundTasks):
+@app.post("/v1/models/download")
+# async def download_model(name: str, background_tasks: BackgroundTasks):
+async def download_model(name: str, request: Request):
     # background_tasks.add_task(model_manager.download_model, name)
-    await model_manager.download_model(name)
+    if ('piper' in name):
+        body = await request.json()
+        # text = body.get("text", "").strip()
+        await model_manager.download_dataset("piper-tts", **body)
+    else:
+        await model_manager.download_model(name)
     return {"status": "download started (or already in progress)"}
 
-@app.post("/models/switch")
+@app.post("/v1/models/switch")
 async def switch_model(name: str):
     await model_manager.serve_model(name)
     return {"active": name}
 
-@app.get("/models")
+@app.get("/v1/models")
 async def list_models():
     return model_manager.list_models()
 
-@app.get("/models/status")
+@app.get("/v1/models/status")
 async def model_status(name: str):
     return model_manager.get_download_status(name)
 
 
 from api.routers.rt_parler_tts import router_parler
+from api.routers.rt_piper_tts import router_piper
 
 @app.post("/v1/audio/speech")
 async def tts_endpoint(request: Request):
@@ -248,10 +273,24 @@ async def tts_endpoint(request: Request):
     model_key = f"{model_id or 'default'}:{model_dir or 'none'}"
 
     # if model_type == "parler":
+    print(body)
     if ("parler" in model_id):
         audio_buffer = await router_parler(text, model_id, description, model_cache, model_key, model_dir)
-    
+    elif ("piper" in model_id):
+        # audio_buffer = None
+        voice_path = body.get("voice", None)
+        audio_buffer = await router_piper(
+            text=text,
+            model_id=voice_path if voice_path is not None else "en/en_US/amy/medium/en_US-amy-medium.onnx",
+            # description=description,
+            model_cache=model_cache,
+            model_key=model_key
+        )
+
     async def streamer():
         yield audio_buffer.read()
 
     return StreamingResponse(streamer(), media_type="audio/wav")
+
+# @app.post("/v1/text-to-speech/:voice_id")
+# async def elevanlabs_tts_endpoint(request: Request):
