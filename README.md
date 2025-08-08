@@ -33,6 +33,7 @@ http://localhost:8000/docs
 | parler-tts/parler-tts-mini-v1 | ✅	|   |
 | parler-tts/parler-tts-large-v1 | ✅ |   |
 | parler-tts/parler-tts-mini-v1.1 | ✅ |   |
+| piper | ✅ |   |
 
 ### Available Voice For Piper Model 
 (https://huggingface.co/rhasspy/piper-voices):
