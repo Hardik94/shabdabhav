@@ -278,10 +278,10 @@ async def tts_endpoint(request: Request):
         audio_buffer = await router_parler(text, model_id, description, model_cache, model_key, model_dir)
     elif ("piper" in model_id):
         # audio_buffer = None
-        voice_path = body.get("voice", None)
+        # voice_path = body.get("voice", "")
         audio_buffer = await router_piper(
             text=text,
-            model_id=voice_path if voice_path is not None else "en/en_US/amy/medium/en_US-amy-medium.onnx",
+            model_id=body.get("voice", "en/en_US/amy/medium/en_US-amy-medium.onnx"),
             # description=description,
             model_cache=model_cache,
             model_key=model_key

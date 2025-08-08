@@ -25,3 +25,24 @@ docker run -p 8000:8000 --restart always -v ./data:/app/api/data tts-astraluv-se
 ```
 http://localhost:8000/docs
 ```
+
+### Available Models 
+
+| Model | TTS | STT |
+|--|--|--|
+| parler-tts/parler-tts-mini-v1 | ✅	|   |
+| parler-tts/parler-tts-large-v1 | ✅ |   |
+| parler-tts/parler-tts-mini-v1.1 | ✅ |   |
+
+### Available Voice For Piper Model 
+(https://huggingface.co/rhasspy/piper-voices):
+
+--> en/en_US/libritts_r/medium
+```
+curl --location 'localhost:8000/v1/models/download?name=piper' \
+--header 'Content-Type: application/json' \
+--data '{
+    "voice": "en/en_US/libritts_r/medium/*"
+}'
+```
+

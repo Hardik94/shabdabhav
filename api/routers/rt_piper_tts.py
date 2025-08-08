@@ -6,7 +6,7 @@ async def router_piper(text, model_id, model_cache, model_key, model_dir="/home/
     Like router_parler, but for Piper-TTS.
     """
     if not model_id:
-        model_id = "en/en_US/amy/medium/en_US-amy-medium.onnx.json"  # Update as needed
+        model_id = "en/en_US/amy/medium/en_US-amy-medium.onnx"  # Update as needed
 
     async def loader():
         return await piper_loader(model_id=model_id, model_dir=model_dir)
@@ -37,6 +37,7 @@ async def piper_loader(model_id: str, model_dir: str = None):
     if model_dir is not None:
         import os
         model_path = os.path.join(model_dir, model_id)
+        print(model_path)
 
     wrapper = PiperTTSModelWrapper(model_path=model_path)
     # LAZY LOAD: don't load in constructor – let generate_audio/load() do it
