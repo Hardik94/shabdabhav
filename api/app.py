@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Request, BackgroundTasks
+from fastapi import FastAPI, HTTPException, Request, BackgroundTasks, Query
 from fastapi.responses import StreamingResponse
 from api.models.model_cache import ModelCacheLRU
 import subprocess
@@ -9,6 +9,9 @@ import asyncio
 import importlib
 from datetime import datetime
 import uuid
+import json
+from pathlib import Path
+
 
 app = FastAPI()
 
@@ -100,6 +103,12 @@ class ModelManager:
                     # repo_type="dataset"
                 )
                 self._download_status[model_name] = "downloaded"
+
+                if not os.path.exists(f"{self.base_dir}/{model_name}/config.json"):
+                    filename_object = f"{self.base_dir}/{model_name}/config.json"
+
+                    with open(filename_object, 'w') as f:
+                        json.dump({}, f, indent=4) # indent for pretty-printing
             except Exception as e:
                 self._download_status[model_name] = f"error: {e}"
 
@@ -113,13 +122,33 @@ class ModelManager:
     def list_models(self):
         
         model_paths = self.find_parler_tts_model_dirs(self.base_dir)
-        models_status = {}
+        models_status = []
         for path in model_paths:
             models_key = path.replace(self.base_dir+'/', '')
-            models_status[models_key] = "Active" if (models_key in list(model_cache.cache.keys())) else "InActive"
-        return {"status": models_status}
+            # models_status[models_key] = "Active" if (models_key in list(model_cache.cache.keys())) else "InActive"
+            models_status.append({'name': models_key, "id": models_key})
+        return {"data": models_status}
         # pass
         
+    def list_voices(self, model_name=None):
+        """
+        A function to list all piper-tts based voices based on the *.onnx.json file format 
+        """
+        voice_dirs = []
+        for root, dirs, files in os.walk(self.base_dir):
+            # ✅ Skip HuggingFace cache dirs
+            if ".cache" in root:
+                continue
+            for f in files:
+                if f.endswith(".onnx.json") or f.endswith(".onnx.json.metadata"):
+                    # Voice ID = relative path from base_dir without extension
+                    voice_id = Path(root).relative_to(self.base_dir).as_posix()
+                    voice_dirs.append(voice_id)
+                    break  # only need one match per directory
+        
+        print(voice_dirs)
+        return {"voices": voice_dirs}
+    
 
     def get_download_status(self, model_name):
         if model_name not in self._download_status:
@@ -141,7 +170,8 @@ class ModelManager:
         model_dirs = []
         for root, dirs, files in os.walk(base_dir):
             # if "config.json" in files and "pytorch_model.bin" in files:
-            if ("config.json" in files) or ('*.onnx.json' in files):
+            # if ("config.json" in files) or ('*.onnx.json' in files):
+            if ("config.json" in files):
                 model_dirs.append(root)
         return model_dirs
 
@@ -263,6 +293,9 @@ async def list_models():
 async def model_status(name: str):
     return model_manager.get_download_status(name)
 
+@app.get("/v1/audio/voices")
+async def list_voices(model: Optional[str] = Query(None, description="Optional model name")):
+    return model_manager.list_voices()
 
 from api.routers.rt_parler_tts import router_parler
 from api.routers.rt_piper_tts import router_piper
@@ -273,7 +306,7 @@ async def tts_endpoint(request: Request):
     JSON payload expects:
     {
         "text": "...",
-        "model_id": "parler-tts/parler-tts-mini-v1" or "tts_models/en/vctk/vits",
+        "model": "parler-tts/parler-tts-mini-v1" or "tts_models/en/vctk/vits",
         "description": "A female speaker with warm tone." (optional, Parler only)
         "model_dir": "./models_cache/parler-tts-mini-v1" (optional; local path for Parler)
     }
