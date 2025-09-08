@@ -7,11 +7,18 @@ import os
 # from api.models.xtts_v2 import XTTSV2ModelWrapper
 import asyncio
 import importlib
+from datetime import datetime
+import uuid
 
 app = FastAPI()
 
 MAX_MODELS_IN_MEMORY = 2  # max models to cache in RAM at once
 model_cache = ModelCacheLRU(max_size=MAX_MODELS_IN_MEMORY)
+
+# Store active connections in memory
+connections = {}
+total_connections = 0  # persistent counter
+server_id = uuid.uuid4().hex.upper()[0:44]
 
 from typing import Optional
 from threading import Lock
@@ -27,7 +34,7 @@ async def ensure_libraries():
 
 
 class ModelManager:
-    def __init__(self, base_dir="./api/data"):
+    def __init__(self, base_dir=f"{os.getcwd()}/api/data"):
         self.base_dir = base_dir
         self.active_model = None
         self.active_model_id = None
@@ -138,6 +145,22 @@ class ModelManager:
                 model_dirs.append(root)
         return model_dirs
 
+async def library_check(model_name: str):
+    """
+    A function to Download/Install the required library
+
+    model_name: model that requires the Installation 
+    """
+
+    try:
+        if ("piper" in model_name):
+            subprocess.check_call(["uv", "pip", "install", ".[piper-tts]"])
+            print("Piper-TTS library installation complete !!! ")
+
+    except Exception as e:
+        raise e
+
+    return True
     
 async def xtts_loader(model_name: str):
     try:
@@ -153,54 +176,48 @@ async def xtts_loader(model_name: str):
     await wrapper.load()
     return wrapper, None  # no tokenizer for XTTS
 
+@app.middleware("http")
+async def track_connections(request: Request, call_next):
+    global total_connections   # ✅ tell Python we mean the global var
 
-# @app.post("/tts")
-# async def tts_endpoint(request: Request):
-#     """
-#     JSON payload expects:
-#     {
-#         "text": "...",
-#         "model_type": "parler" or "xtts",
-#         "model_id": "parler-tts/parler-tts-mini-v1" or "tts_models/en/vctk/vits",
-#         "description": "A female speaker with warm tone." (optional, Parler only)
-#         "model_dir": "./models_cache/parler-tts-mini-v1" (optional; local path for Parler)
-#     }
-#     """
-#     body = await request.json()
-#     text = body.get("text", "").strip()
-#     if not text:
-#         raise HTTPException(status_code=400, detail="Missing required field: text")
-#     model_type = body.get("model_type", "parler")
-#     model_id = body.get("model_id")
-#     description = body.get("description", "A clear expressive female voice.")
-#     model_dir = body.get("model_dir", None)
+    client_host, client_port = request.client
+    cid = f"{client_host}:{client_port}"
 
-#     model_key = f"{model_type}:{model_id or 'default'}:{model_dir or 'none'}"
+    # Count total connections ever seen
+    total_connections += 1
 
-#     if model_type == "parler":
-#         pass
-#     elif model_type == "xtts":
-#         pass
-#     #     if not model_id:
-#     #         model_id = "tts_models/en/vctk/vits"
+    # Register connection
+    connections[cid] = {
+        "cid": len(connections) + 1,
+        "ip": client_host,
+        "port": client_port,
+        "user": "anonymous"  # you can enhance with auth user info
+        # "subscriptions": 0
+    }
 
-#     #     async def loader():
-#     #         return await xtts_loader(model_id)
+    # Process request
+    response = await call_next(request)
 
-#     #     try:
-#     #         model_wrapper, _ = await model_cache.get(model_key, loader)
-#     #         audio_buffer = await model_wrapper.generate_audio(text=text)
-#     #     except Exception as e:
-#     #         raise HTTPException(status_code=500, detail=f"Error generating XTTS audio: {e}")
+    # Unregister after response is sent
+    if cid in connections:
+        connections.pop(cid)
 
-#     # else:
-#     #     raise HTTPException(status_code=400, detail=f"Unknown model_type: {model_type}")
+    return response
 
-#     # async def streamer():
-#     #     yield audio_buffer.read()
+@app.get("/")
+async def index():
+    now = datetime.utcnow().isoformat() + "Z"
 
-#     # return StreamingResponse(streamer(), media_type="audio/wav")
-
+    response = {
+        "server_id": server_id,
+        "now": now,
+        "num_connections": len(connections),
+        "total": len(connections),
+        "offset": 0,
+        "limit": 1024,
+        "connections": list(connections.values())
+    }
+    return response
 
 @app.get("/health")
 async def health():
@@ -210,7 +227,7 @@ async def health():
         "num_models": len(model_cache.cache)
     }
 
-model_manager = ModelManager(base_dir="./api/data")
+model_manager = ModelManager(base_dir=f"{os.getcwd()}/api/data")
 
 # @app.post("/tts")
 # async def tts(text: str):
@@ -227,6 +244,7 @@ async def download_model(name: str, request: Request):
     if ('piper' in name):
         body = await request.json()
         # text = body.get("text", "").strip()
+        await library_check("piper-tts")
         await model_manager.download_dataset("piper-tts", **body)
     else:
         await model_manager.download_model(name)

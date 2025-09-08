@@ -1,7 +1,8 @@
 from fastapi import HTTPException
 import importlib
+import os
 
-async def router_piper(text, model_id, model_cache, model_key, model_dir="/home/workspace/shabdabhav/api/data/piper-tts"):
+async def router_piper(text, model_id, model_cache, model_key, model_dir=f"{os.getcwd()}/api/data/piper-tts"):
     """
     Like router_parler, but for Piper-TTS.
     """
