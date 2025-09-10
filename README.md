@@ -46,4 +46,3 @@ curl --location 'localhost:8000/v1/models/download?name=piper' \
     "voice": "en/en_US/libritts_r/medium/*"
 }'
 ```
-

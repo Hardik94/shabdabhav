@@ -2,15 +2,16 @@ from fastapi import HTTPException
 import importlib
 import os
 
-async def router_piper(text, model_id, model_cache, model_key, model_dir=f"{os.getcwd()}/api/data/piper-tts"):
+# async def router_piper(text, model_id, model_cache, model_key, model_dir=f"{os.getcwd()}/data/piper-tts"):
+async def router_piper(text, voice, model_cache, model_key, model_dir=f"{os.getcwd()}/data/piper-tts"):
     """
     Like router_parler, but for Piper-TTS.
     """
-    if not model_id:
-        model_id = "en/en_US/amy/medium/en_US-amy-medium.onnx"  # Update as needed
+    if not voice:
+        voice = "en/en_US/amy/medium/en_US-amy-medium.onnx"  # Update as needed
 
     async def loader():
-        return await piper_loader(model_id=model_id, model_dir=model_dir)
+        return await piper_loader(voice=voice, model_dir=model_dir)
 
     try:
         model_wrapper, _ = await model_cache.get(model_key, loader)
@@ -21,7 +22,7 @@ async def router_piper(text, model_id, model_cache, model_key, model_dir=f"{os.g
 
     return audio_buffer
 
-async def piper_loader(model_id: str, model_dir: str = None):
+async def piper_loader(voice: str, model_dir: str = None):
     try:
         piper_module = importlib.import_module("piper")
         soundfile = importlib.import_module("soundfile")
@@ -34,10 +35,10 @@ async def piper_loader(model_id: str, model_dir: str = None):
     PiperTTSModelWrapper = importlib.import_module("api.models.piper_tts").PiperTTSModelWrapper
 
     # For Piper, model_id is the ONNX file path, and model_dir may be used to find it
-    model_path = model_id
+    model_path = voice
     if model_dir is not None:
         import os
-        model_path = os.path.join(model_dir, model_id)
+        model_path = os.path.join(model_dir, voice)
         print(model_path)
 
     wrapper = PiperTTSModelWrapper(model_path=model_path)

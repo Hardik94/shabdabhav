@@ -25,6 +25,25 @@ server_id = uuid.uuid4().hex.upper()[0:44]
 
 from typing import Optional
 from threading import Lock
+from dotenv import load_dotenv
+load_dotenv()  # loads .env if present
+
+def get_allowed_tokens():
+    """
+    A Function to load API_TOKENS from .env file and use it. comma separated
+
+    e.g.
+    API_TOKENS=382f8a7afa824c3fbe490cb9061a3dcf,05885c6379914d47b25a5a905ad2687c
+    """
+    tokens = os.getenv("API_TOKENS", "")
+    return set(token.strip() for token in tokens.split(",") if token.strip())
+
+def token_auth_enabled():
+    """
+    A function to return True/False for Token is exist in .env file or not
+    """
+    # No tokens specified = no auth required
+    return bool(get_allowed_tokens())
 
 @app.on_event("startup")
 async def ensure_libraries():
@@ -37,7 +56,7 @@ async def ensure_libraries():
 
 
 class ModelManager:
-    def __init__(self, base_dir=f"{os.getcwd()}/api/data"):
+    def __init__(self, base_dir=f"{os.getcwd()}/data"):
         self.base_dir = base_dir
         self.active_model = None
         self.active_model_id = None
@@ -224,6 +243,15 @@ async def track_connections(request: Request, call_next):
         "user": "anonymous"  # you can enhance with auth user info
         # "subscriptions": 0
     }
+    allowed_tokens = get_allowed_tokens()
+    if allowed_tokens:  # Auth required
+        token = request.headers.get("Authorization")
+        # Accept "Bearer xyz" or just "xyz"
+        if token:
+            token = token.replace("Bearer ", "").strip()
+        if not (token and token in allowed_tokens):
+            raise HTTPException(status_code=401, detail="Unauthorized")
+            return {"status": "Not Authorized"}
 
     # Process request
     response = await call_next(request)
@@ -257,7 +285,7 @@ async def health():
         "num_models": len(model_cache.cache)
     }
 
-model_manager = ModelManager(base_dir=f"{os.getcwd()}/api/data")
+model_manager = ModelManager(base_dir=f"{os.getcwd()}/data")
 
 # @app.post("/tts")
 # async def tts(text: str):
@@ -306,34 +334,32 @@ async def tts_endpoint(request: Request):
     JSON payload expects:
     {
         "text": "...",
-        "model": "parler-tts/parler-tts-mini-v1" or "tts_models/en/vctk/vits",
-        "description": "A female speaker with warm tone." (optional, Parler only)
-        "model_dir": "./models_cache/parler-tts-mini-v1" (optional; local path for Parler)
+        "model": "parler-tts/parler-tts-mini-v1" or "piper-tts",
+        "voice": (Mike)  |  (en/en_US/amy/medium/en_US-amy-medium.onnx)
     }
     """
     body = await request.json()
     text = body.get("text", "").strip()
     if not text:
         raise HTTPException(status_code=400, detail="Missing required field: text")
-    # model_type = body.get("model_type", "parler")
-    model_id = body.get("model_id")
-    description = body.get("description", "A clear expressive female voice.")
-    model_dir = body.get("model_dir", None)
+    model_id = body.get("model")
+    if not model_id:
+        raise HTTPException(status_code=400, detail="Missing required field: model")
+    voice = body.get("voice")
+    if not voice:
+        raise HTTPException(status_code=400, detail="Missing required field: voice")
 
-    # model_key = f"{model_type}:{model_id or 'default'}:{model_dir or 'none'}"
+    model_dir = f"{os.getcwd()}/data/{model_id}"
     model_key = f"{model_id or 'default'}:{model_dir or 'none'}"
 
-    # if model_type == "parler":
     print(body)
     if ("parler" in model_id):
-        audio_buffer = await router_parler(text, model_id, description, model_cache, model_key, model_dir)
-    elif ("piper" in model_id):
-        # audio_buffer = None
-        # voice_path = body.get("voice", "")
+        audio_buffer = await router_parler(text, model_id, voice, model_cache, model_key, model_dir)
+    elif ("piper-tts" in model_id):
+
         audio_buffer = await router_piper(
             text=text,
-            model_id=body.get("voice", "en/en_US/amy/medium/en_US-amy-medium.onnx"),
-            # description=description,
+            voice=voice or "en/en_US/amy/medium/en_US-amy-medium.onnx",
             model_cache=model_cache,
             model_key=model_key
         )

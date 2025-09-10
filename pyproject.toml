@@ -21,6 +21,11 @@ parler-tts = [
     "soundfile",
     "sentencepiece"
 ]
+piper-tts = [
+    "piper-tts",
+    "soundfile",
+    "huggingface_hub"
+]
 xtts = [
     "tts"
 ]
