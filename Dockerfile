@@ -21,7 +21,7 @@ RUN pip install --no-cache-dir uv \
 
 # Copy the rest of the application code
 COPY api/ ./api/
-
+COPY setup.py ./
 # Expose server port as usual
 EXPOSE 8000
 

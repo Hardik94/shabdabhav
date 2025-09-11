@@ -159,13 +159,19 @@ class ModelManager:
             if ".cache" in root:
                 continue
             for f in files:
-                if f.endswith(".onnx.json") or f.endswith(".onnx.json.metadata"):
+                # if f.endswith(".onnx.json") or f.endswith(".onnx.json.metadata"):
+                if f.endswith(".onnx"):
                     # Voice ID = relative path from base_dir without extension
-                    voice_id = Path(root).relative_to(self.base_dir).as_posix()
+                    voice_id = Path(root, f).relative_to(f"{self.base_dir}/piper-tts/").as_posix()
                     voice_dirs.append(voice_id)
                     break  # only need one match per directory
-        
-        print(voice_dirs)
+                
+        # print(voice_dirs)
+        if ('parler-tts' in os.listdir(f"{self.base_dir}")):
+            voice_dirs.extend(["Laura", "Gary", "Jon", "Lea", "Karen", "Rick", "Brenda", "David", "Eileen", "Jordan", 
+                           "Mike", "Yann", "Joy", "James", "Eric", "Lauren", "Rose", "Will", "Jason", "Aaron", "Naomie", 
+                           "Alisa", "Patrick", "Jerry", "Tina", "Jenna", "Bill", "Tom", "Carol", "Barbara", "Rebecca", 
+                           "Anna", "Bruce", "Emily"])
         return {"voices": voice_dirs}
     
 
