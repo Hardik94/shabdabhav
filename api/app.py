@@ -163,15 +163,37 @@ class ModelManager:
                 if f.endswith(".onnx"):
                     # Voice ID = relative path from base_dir without extension
                     voice_id = Path(root, f).relative_to(f"{self.base_dir}/piper-tts/").as_posix()
-                    voice_dirs.append(voice_id)
+                    # voice_dirs.append(voice_id)
+                    voice_dirs.append({
+                        'id': voice_id,
+                        'name': voice_id.split('/')[2],
+                        'gender': "NEUTRAL",
+                        'language_code': f"{voice_id.split('/')[1]}",
+                        'description': f"{voice_id.split('/')[3]}"
+                    })
                     break  # only need one match per directory
                 
         # print(voice_dirs)
         if ('parler-tts' in os.listdir(f"{self.base_dir}")):
-            voice_dirs.extend(["Laura", "Gary", "Jon", "Lea", "Karen", "Rick", "Brenda", "David", "Eileen", "Jordan", 
-                           "Mike", "Yann", "Joy", "James", "Eric", "Lauren", "Rose", "Will", "Jason", "Aaron", "Naomie", 
-                           "Alisa", "Patrick", "Jerry", "Tina", "Jenna", "Bill", "Tom", "Carol", "Barbara", "Rebecca", 
-                           "Anna", "Bruce", "Emily"])
+
+            # Female English language voices add
+            female_en_voice_dirs = [{"id": name, 
+                                     "name": name, 
+                                     "gender": "FEMALE", 
+                                     "language_code": "en"} for name in ["Laura", "Lea", "karen", "Brenda", "Eileen", "Lauren",
+                                                                         "Rose", "Naomi", "Alisa", "Tina", "Jenna", "Carol",
+                                                                         "Barbara", "Rebecca", "Anna", "Emily"]]
+            voice_dirs.extend(female_en_voice_dirs)
+
+            # Male English language voices add
+            male_en_voice_dirs = [{"id": name, 
+                                     "name": name, 
+                                     "gender": "MALE", 
+                                     "language_code": "en"} for name in ["Gary", "Jon", "Rick", "David", "Jordan", "Mike", "Yann",
+                                                                         "Joy", "James", "Eric", "Will", "Jason", "Aaron", "Patrick",
+                                                                         "Jerry", "Bill", "Tom", "Bruce"]]
+            voice_dirs.extend(male_en_voice_dirs)
+
         return {"voices": voice_dirs}
     
 
