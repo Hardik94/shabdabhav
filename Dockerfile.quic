@@ -12,7 +12,7 @@ WORKDIR /app
 # System deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
-    curl \
+    curl libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
 # Python deps (no ML)
