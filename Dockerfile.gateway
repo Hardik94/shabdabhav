@@ -1,0 +1,37 @@
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PYTHONPATH=/app \
+    STREAM_ENGINE_BASE=https://quic:9443 \
+    QUIC_INSECURE=1 \
+    API_TOKENS= \
+    HUGGINGFACE_TOKEN=
+
+WORKDIR /app
+
+# System deps
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Python deps (minimal, no ML)
+RUN pip install --upgrade pip && pip install \
+    fastapi[standard] \
+    uvicorn[standard] \
+    aioquic \
+    cryptography \
+    python-multipart
+
+# App code
+COPY src/ /app/src/
+
+EXPOSE 8000
+
+CMD ["uvicorn", "src.gateway.main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+# docker build -t shabda-gateway:1.0 -f Dockerfile.gateway .
+
+

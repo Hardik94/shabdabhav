@@ -32,6 +32,17 @@ xtts = [
 huggingface = [
     "huggingface_hub"
 ]
+whisper-stt = [
+    "faster-whisper"
+]
 
 [tool.poetry.scripts]
 start = "uvicorn api.app:app --host 0.0.0.0 --port 8000 --log-level info"
+shabda-gateway = "src.gateway.main:run"
+shabda-quic = "src.streaming.h3_server:run"
+
+[project.scripts]
+# start = "uvicorn api.app:app --host 0.0.0.0 --port 8000 --log-level info"
+shabda-gateway = "src.gateway.main:run"
+shabda-quic = "src.streaming.h3_server:run"
+

@@ -1,0 +1,55 @@
+version: "3.3"
+services:
+  quic:
+    build:
+      context: .
+      dockerfile: Dockerfile.quic
+    container_name: shabda-quic
+    env_file:
+      - .env
+    command: ["python", "-m", "src.streaming.h3_server", "--host", "0.0.0.0", "--port", "9443", "--cert", "./quic_cert.pem", "--key", "./quic_key.pem"]
+    environment:
+      - PIPER_BIN=/usr/local/bin/piper
+      - WHISPER_CPP_BIN=/usr/local/bin/whisper-cpp/bin/whisper-cli
+      - LD_LIBRARY_PATH=/usr/local/bin/whisper-cpp/src:/usr/local/bin/whisper-cpp/ggml/src
+    ports:
+      - "9443:9443/udp"
+    volumes:
+      - ./data/models:/app/data/models
+      - ./data/audio:/app/data/audio
+      - ./quic_cert.pem:/app/quic_cert.pem:ro
+      - ./quic_key.pem:/app/quic_key.pem:ro
+      - ./whisper.cpp/build:/usr/local/bin/whisper-cpp:ro
+      # Mount Linux binaries into the container or bake them into the image
+      # - ./bin/piper:/usr/local/bin/piper:ro
+      # - ./bin/whisper-cpp:/usr/local/bin/whisper-cpp:ro
+
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile.gateway
+    container_name: shabda-gateway
+    env_file:
+      - .env
+    command: ["uvicorn", "src.gateway.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    environment:
+      - STREAM_ENGINE_BASE=https://quic:9443
+      - QUIC_INSECURE=1
+      # Optional auth/token vars
+      # - API_TOKENS=token1,token2
+      # - HUGGINGFACE_TOKEN=hf_xxx
+      # - API_TOKENS=token1,token2
+    ports:
+      - "8000:8000"
+    depends_on:
+      - quic
+    volumes:
+      - ./data/models:/app/data/models
+      - ./data/audio:/app/data/audio
+
+# volumes:
+  # Named volumes can be used instead of bind mounts if preferred
+  # models:
+  # audio:
+
+

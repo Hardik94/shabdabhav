@@ -1,0 +1,36 @@
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PYTHONPATH=/app \
+    PIPER_BIN=/usr/local/bin/piper \
+    WHISPER_CPP_BIN=/usr/local/bin/whisper-cpp
+
+WORKDIR /app
+
+# System deps
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Python deps (no ML)
+RUN pip install --upgrade pip && pip install \
+    aioquic \
+    cryptography
+
+RUN pip install transformers, soundfile, sentencepiece, torch, huggingface_hub
+
+# App code
+COPY src/ /app/src/
+
+# Volume locations for persistence (declared in compose)
+VOLUME ["/app/data/models", "/app/data/audio"]
+
+EXPOSE 9443/udp
+
+CMD ["python", "-m", "src.streaming.h3_server", "--host", "0.0.0.0", "--port", "9443", "--cert", "./quic_cert.pem", "--key", "./quic_key.pem"]
+
+# docker build -t shabda-quic:1.0 -f Dockerfile.quic .
+
