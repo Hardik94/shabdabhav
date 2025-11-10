@@ -5,9 +5,10 @@
 ### To Download piper Voice 
 
 ```
-curl --location 'localhost:8000/v1/models/download?name=piper' \
+curl --location 'localhost:8000/v1/models/download' \
 --header 'Content-Type: application/json' \
 --data '{
+    "name": "piper-tts",
     "voice": "en/en_US/libritts_r/medium/*"
 }'
 ```
@@ -48,9 +49,9 @@ curl --location 'localhost:8000/v1/models/download?name=piper' \
 ### To Download parler model
 
 ```
-curl --location 'localhost:8000/v1/models/download?name=parler-tts/parler-tts-mini-v1' \
+curl --location 'localhost:8000/v1/models/download' \
 --header 'Content-Type: application/json' \
---data '{}'
+--data '{"name": "parler-tts/parler-tts-mini-v1"}'
 ```
 
 | Model | version |
@@ -59,4 +60,61 @@ curl --location 'localhost:8000/v1/models/download?name=parler-tts/parler-tts-mi
 | parler-tts | parler-tts-large-v1 |
 | parler-tts | parler-tts-mini-v1.1 |
 
+
+## To Download the STT models
+
+### To Download and setup the whisper-cpp
+
+Integrated [whisper-cpp](https://github.com/ggml-org/whisper.cpp)
+
+```
+curl --location 'localhost:8000/v1/models/download' \
+--header 'Content-Type: application/json' \
+--data '{"name": "ggml-large-v3.bin"}'
+```
+
+**Installation Instruction**
+
+First clone the repository in **shabdabhav** repo folder
+
+```
+git clone https://github.com/ggml-org/whisper.cpp.git
+```
+
+Navigate into the directory:
+
+```
+cd whisper.cpp
+sh ./models/download-ggml-model.sh base.en
+```
+
+Now build the whisper-cli example and transcribe an audio file like this:
+
+```
+# build the project
+cmake -B build
+cmake --build build -j --config Release
+
+# transcribe an audio file
+./build/bin/whisper-cli -f samples/jfk.wav
+```
+
+| Model | Size | Command |
+|---|---|---|
+| tiny | 75 MiB | ggml-tiny.bin |
+| tiny.en | 75 MiB | ggml-tiny.en.bin |
+| base | 142 MiB | ggml-base.bin |
+| base.en | 142 MiB | ggml-base.en.bin |
+| small | 466 MiB | ggml-small.bin |
+| small.en | 466 MiB | ggml-small.en.bin |
+| small.en-tdrz | 465 MiB | ggml-small.en-tdrz.bin |
+| medium | 1.5 GiB | ggml-medium.bin |
+| medium.en | 1.5 GiB | ggml-medium.en.bin |
+| large-v1 | 2.9 GiB | ggml-large-v1.bin |
+| large-v2 | 2.9 GiB | ggml-large-v2.bin |
+| large-v2-q5_0 | 1.1 GiB | ggml-large-v2-q5_0.bin |
+| large-v3 | 2.9 GiB | ggml-large-v3.bin |
+| large-v3-q5_0 | 1.1 GiB | ggml-large-v3-q5_0.bin |
+| large-v3-turbo | 1.5 GiB | ggml-large-v3-turbo.bin |
+| large-v3-turbo-q5_0 | 547 MiB | ggml-large-v3-turbo-q5_0.bin |
 

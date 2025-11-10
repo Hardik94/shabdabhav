@@ -32,7 +32,6 @@ Details version can be found at [models.md](models.md)
 | whisper-cpp |  | ✅ |  
 
 
-
 ## Run locally (without Docker)
 
 1) Start QUIC engine (HTTP/3):
