@@ -20,6 +20,18 @@ Both directories are created on first run.
 - `PIPER_BIN`: absolute path to Piper binary inside container/host
 - `WHISPER_CPP_BIN`: absolute path to whisper.cpp binary inside container/host
 
+## Available Models 
+
+Details version can be found at [models.md](models.md)
+
+
+| Model | TTS | STT |
+|--|--|--|
+| parler-tts | ✅	|   |
+| piper | ✅ |   |
+| whisper-cpp |  | ✅ |  
+
+
 ## Run locally (without Docker)
 
 1) Start QUIC engine (HTTP/3):
